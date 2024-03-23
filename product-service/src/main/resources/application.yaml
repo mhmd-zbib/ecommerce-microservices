@@ -1,0 +1,6 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://mohammadhzbib:0OUqJLQne2gjIF6Q@production.xfmi3.mongodb.net/yourDatabase?retryWrites=true&w=majority&appName=production
+server:
+  port: 8001
