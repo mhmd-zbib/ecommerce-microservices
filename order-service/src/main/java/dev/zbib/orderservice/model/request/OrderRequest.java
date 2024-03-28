@@ -13,6 +13,6 @@ import java.util.List;
 @Builder
 public class OrderRequest {
 
-    private List<OrderLineItemsRequest> orderLineItemsRequestList;
+    private List<OrderItemRequest> orderItems;
 
 }
