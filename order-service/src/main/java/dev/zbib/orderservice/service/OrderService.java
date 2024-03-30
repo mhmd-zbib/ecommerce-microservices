@@ -29,18 +29,28 @@ public class OrderService {
     @Transactional
     public String placeOrder(OrderRequest orderRequest) {
 
-        List<OrderItem> orderItems = orderRequest.getOrderItems().stream().map(this::mapToOrderItem).toList();
+        List<OrderItem> orderItems = orderRequest.getOrderItems()
+                .stream()
+                .map(this::mapToOrderItem)
+                .toList();
 
         validateStockAvailability(orderItems);
 
-        Order order = Order.builder().orderNumber(UUID.randomUUID().toString()).orderItems(orderItems).status(OrderStatus.PENDING).orderDate(LocalDateTime.now()).build();
+        Order order = Order.builder()
+                .orderNumber(UUID.randomUUID()
+                        .toString())
+                .orderItems(orderItems)
+                .status(OrderStatus.PENDING)
+                .orderDate(LocalDateTime.now())
+                .build();
 
         orderRepository.save(order);
         return order.getOrderNumber();
     }
 
     private void validateStockAvailability(List<OrderItem> orderItems) {
-        Map<String, Integer> requiredQuantities = orderItems.stream().collect(Collectors.toMap(OrderItem::getSkuCode, OrderItem::getQuantity));
+        Map<String, Integer> requiredQuantities = orderItems.stream()
+                .collect(Collectors.toMap(OrderItem::getSkuCode, OrderItem::getQuantity));
 
         List<InventoryResponse> inventoryResponses = inventoryService.checkStock(new ArrayList<>(requiredQuantities.keySet()));
 
@@ -67,6 +77,9 @@ public class OrderService {
     }
 
     private OrderItem mapToOrderItem(OrderItemRequest orderItemsRequest) {
-        return OrderItem.builder().quantity(orderItemsRequest.getQuantity()).skuCode(orderItemsRequest.getSkuCode()).build();
+        return OrderItem.builder()
+                .quantity(orderItemsRequest.getQuantity())
+                .skuCode(orderItemsRequest.getSkuCode())
+                .build();
     }
 }
