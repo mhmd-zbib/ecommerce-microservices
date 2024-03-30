@@ -9,6 +9,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @Slf4j
 @EnableDiscoveryClient
 public class InventoryServiceApplication {
+
     public static void main(String[] args) {
         SpringApplication.run(InventoryServiceApplication.class, args);
         log.info("Started Inventory Service");

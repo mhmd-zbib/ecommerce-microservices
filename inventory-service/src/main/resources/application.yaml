@@ -13,11 +13,10 @@ spring:
       ddl-auto: update
     show-sql: true
 
-
 server:
-  port: 8003
+  port: 0
 
 eureka:
   client:
     service-url:
-      default-one: http://localhost:8761/eureka
+      defaultZone: http://localhost:8761/eureka/
