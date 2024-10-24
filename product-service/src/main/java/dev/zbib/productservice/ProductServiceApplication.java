@@ -8,10 +8,10 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @SpringBootApplication
 @EnableMongoRepositories
 @Slf4j
-public class ProductServiceApplication {
+public class  ProductServiceApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(ProductServiceApplication.class, args);
-        log.info("Started Product Service");
+
     }
 }
