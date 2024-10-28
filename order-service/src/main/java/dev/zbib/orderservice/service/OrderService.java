@@ -1,6 +1,5 @@
 package dev.zbib.orderservice.service;
 
-import dev.zbib.orderservice.exceptions.InsufficientStockException;
 import dev.zbib.orderservice.exceptions.OutOfStockException;
 import dev.zbib.orderservice.model.entity.Order;
 import dev.zbib.orderservice.model.entity.OrderItem;
@@ -14,7 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,12 +57,11 @@ public class OrderService {
         }
 
         if (!outOfStockSkuCodes.isEmpty()) {
-            List<String> rec = Arrays.asList("SKU123", "SKU456");
-            throw new OutOfStockException(insufficientStockSkuCodes, rec);
+            throw new OutOfStockException(insufficientStockSkuCodes);
         }
 
         if (!insufficientStockSkuCodes.isEmpty()) {
-            throw new InsufficientStockException("Insufficient stock for items: " + String.join(", ", insufficientStockSkuCodes));
+            throw new OutOfStockException(insufficientStockSkuCodes);
         }
 
     }
