@@ -1,66 +1,71 @@
 package dev.zbib.orderservice.service;
 
+import dev.zbib.orderservice.exceptions.InsufficientStockException;
+import dev.zbib.orderservice.exceptions.OutOfStockException;
 import dev.zbib.orderservice.model.entity.Order;
-import dev.zbib.orderservice.model.entity.OrderLineItems;
-import dev.zbib.orderservice.model.request.OrderLineItemsRequest;
+import dev.zbib.orderservice.model.entity.OrderItem;
+import dev.zbib.orderservice.model.enums.OrderStatus;
+import dev.zbib.orderservice.model.request.OrderItemRequest;
 import dev.zbib.orderservice.model.request.OrderRequest;
 import dev.zbib.orderservice.model.response.InventoryResponse;
 import dev.zbib.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final WebClient webClient;
+    private final InventoryService inventoryService;
 
-    @Transactional(readOnly = true)
-    public void placeOrder(OrderRequest request) {
-        final List<OrderLineItems> orderLineItems = request.getOrderLineItemsRequestList()
-                .stream()
-                .map(this::mapToEntity)
-                .toList();
+    @Transactional
+    public String placeOrder(OrderRequest orderRequest) {
 
-        Order order = Order.builder()
-                .orderNumber(UUID.randomUUID().toString())
-                .orderLineItems(orderLineItems)
-                .build();
+        List<OrderItem> orderItems = orderRequest.getOrderItems().stream().map(this::mapToOrderItem).toList();
 
-        final List<String> skuCodes = order.getOrderLineItems().stream().
-                map(OrderLineItems::getSkuCode)
-                .toList();
+        validateStockAvailability(orderItems);
 
-        InventoryResponse[] inventoryResponseArray = webClient.get()
-                .uri("http://localhost:8003/inventory",
-                        uriBuilder -> uriBuilder.queryParam("skuCode", skuCodes).build())
-                .retrieve()
-                .bodyToMono(InventoryResponse[].class)
-                .block();
-
-        assert inventoryResponseArray != null;
-        boolean allProductsInStock = Arrays.stream(inventoryResponseArray).allMatch(InventoryResponse::isInStock);
-
-        if (!allProductsInStock) {
-            throw new IllegalArgumentException("Product not in stock please try again later.");
-        }
+        Order order = Order.builder().orderNumber(UUID.randomUUID().toString()).orderItems(orderItems).status(OrderStatus.PENDING).orderDate(LocalDateTime.now()).build();
 
         orderRepository.save(order);
+        return order.getOrderNumber();
     }
 
-    private OrderLineItems mapToEntity(OrderLineItemsRequest orderLineItemsRequest) {
-        return OrderLineItems.builder()
-                .price(orderLineItemsRequest.getPrice())
-                .quantity(orderLineItemsRequest.getQuantity())
-                .skuCode(orderLineItemsRequest.getSkuCode())
-                .build();
+    private void validateStockAvailability(List<OrderItem> orderItems) {
+        Map<String, Integer> requiredQuantities = orderItems.stream().collect(Collectors.toMap(OrderItem::getSkuCode, OrderItem::getQuantity));
+
+        List<InventoryResponse> inventoryResponses = inventoryService.checkStock(new ArrayList<>(requiredQuantities.keySet()));
+
+        List<String> outOfStockSkuCodes = new ArrayList<>();
+        List<String> insufficientStockSkuCodes = new ArrayList<>();
+
+        for (InventoryResponse response : inventoryResponses) {
+            Integer requiredQuantity = requiredQuantities.get(response.getSkuCode());
+            if (response.getQuantityInStock() == 0) {
+                outOfStockSkuCodes.add(response.getSkuCode());
+            } else if (requiredQuantity != null && requiredQuantity > response.getQuantityInStock()) {
+                insufficientStockSkuCodes.add(response.getSkuCode());
+            }
+        }
+
+        if (!outOfStockSkuCodes.isEmpty()) {
+            List<String> rec = Arrays.asList("SKU123", "SKU456");
+            throw new OutOfStockException(insufficientStockSkuCodes, rec);
+        }
+
+        if (!insufficientStockSkuCodes.isEmpty()) {
+            throw new InsufficientStockException("Insufficient stock for items: " + String.join(", ", insufficientStockSkuCodes));
+        }
+
     }
 
+    private OrderItem mapToOrderItem(OrderItemRequest orderItemsRequest) {
+        return OrderItem.builder().quantity(orderItemsRequest.getQuantity()).skuCode(orderItemsRequest.getSkuCode()).build();
+    }
 }
