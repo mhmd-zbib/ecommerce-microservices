@@ -13,12 +13,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InventoryService {
 
-    private final WebClient webClient;
+    private final WebClient.Builder webClientBuilder;
 
     public List<InventoryResponse> checkStock(List<String> skuCodes) {
-        InventoryResponse[] inventoryResponses = webClient.get()
-                .uri("http://localhost:8003/inventory", uriBuilder ->
-                        uriBuilder.queryParam("skuCode", skuCodes).build())
+        InventoryResponse[] inventoryResponses = webClientBuilder.build()
+                .get()
+                .uri("http://inventory-service/inventory", uriBuilder ->
+                        uriBuilder.queryParam("skuCode", skuCodes)
+                                .build())
                 .retrieve()
                 .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(), clientResponse ->
                         Mono.error(new RuntimeException("Inventory service is unavailable.")))
