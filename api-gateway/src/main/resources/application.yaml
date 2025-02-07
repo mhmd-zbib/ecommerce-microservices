@@ -50,7 +50,7 @@ spring:
               args:
                 maxSize: 5MB
             - name: DedupeResponseHeader
-              args:
+              args: 
                 strategy: RETAIN_UNIQUE
             - name: CacheRequestBody
               args:
