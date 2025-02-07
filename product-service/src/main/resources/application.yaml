@@ -4,6 +4,10 @@ spring:
   data:
     mongodb:
       uri: mongodb+srv://mohammadhzbib:0OUqJLQne2gjIF6Q@production.xfmi3.mongodb.net/yourDatabase?retryWrites=true&w=majority&appName=production
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 5s
+    socket-timeout: 3s
 server:
   port: 8001
 
@@ -11,3 +15,8 @@ eureka:
   client:
     service-url:
       defaultZone: http://eureka:password@localhost:8761/eureka/
+
+management:
+  health:
+    elasticsearch:
+      enabled: true
