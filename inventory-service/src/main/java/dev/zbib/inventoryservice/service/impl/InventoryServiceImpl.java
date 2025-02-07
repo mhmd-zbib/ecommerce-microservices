@@ -1,24 +1,24 @@
-package dev.zbib.inventoryservice.service;
+package dev.zbib.inventoryservice.service.impl;
 
 import dev.zbib.common.exception.ApiException;
-import dev.zbib.inventoryservice.dto.InventoryResponse;
 import dev.zbib.inventoryservice.model.Inventory;
 import dev.zbib.inventoryservice.repository.InventoryRepository;
+import dev.zbib.inventoryservice.service.InventoryService;
+import dev.zbib.inventoryservice.service.InventoryLockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class InventoryService {
+class InventoryServiceImpl implements InventoryService {
     private final InventoryRepository inventoryRepository;
     private final InventoryLockService lockService;
     
+    @Override
     @Transactional(readOnly = true)
     public boolean isInStock(String skuCode, Integer quantity) {
         log.info("Checking stock for sku: {}", skuCode);
@@ -27,6 +27,7 @@ public class InventoryService {
             .orElse(false);
     }
     
+    @Override
     @Transactional
     public void updateStock(String skuCode, Integer quantity) {
         lockService.acquireLock(skuCode);
@@ -41,6 +42,7 @@ public class InventoryService {
         }
     }
     
+    @Override
     public List<InventoryResponse> checkInventory(List<String> skuCodes) {
         return inventoryRepository.findBySkuCodeIn(skuCodes).stream()
             .map(inventory -> InventoryResponse.builder()
@@ -50,23 +52,4 @@ public class InventoryService {
                 .build())
             .toList();
     }
-    
-    private Inventory findInventoryOrThrow(String skuCode) {
-        return inventoryRepository.findBySkuCodeWithLock(skuCode)
-            .orElseThrow(() -> new ApiException(
-                "Inventory not found",
-                "INVENTORY_NOT_FOUND",
-                HttpStatus.NOT_FOUND
-            ));
-    }
-    
-    private void validateStock(Inventory inventory, Integer quantity) {
-        if (inventory.getQuantity() < quantity) {
-            throw new ApiException(
-                "Insufficient stock",
-                "INSUFFICIENT_STOCK",
-                HttpStatus.BAD_REQUEST
-            );
-        }
-    }
-}
+} 

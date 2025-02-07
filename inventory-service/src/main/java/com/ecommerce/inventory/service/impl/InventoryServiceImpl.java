@@ -1,24 +1,22 @@
-package dev.zbib.inventoryservice.service;
+package com.ecommerce.inventory.service.impl;
 
-import dev.zbib.common.exception.ApiException;
-import dev.zbib.inventoryservice.dto.InventoryResponse;
-import dev.zbib.inventoryservice.model.Inventory;
-import dev.zbib.inventoryservice.repository.InventoryRepository;
+import com.ecommerce.common.exception.ApiException;
+import com.ecommerce.inventory.model.Inventory;
+import com.ecommerce.inventory.repository.InventoryRepository;
+import com.ecommerce.inventory.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class InventoryService {
+class InventoryServiceImpl implements InventoryService {
     private final InventoryRepository inventoryRepository;
     private final InventoryLockService lockService;
     
+    @Override
     @Transactional(readOnly = true)
     public boolean isInStock(String skuCode, Integer quantity) {
         log.info("Checking stock for sku: {}", skuCode);
@@ -27,6 +25,7 @@ public class InventoryService {
             .orElse(false);
     }
     
+    @Override
     @Transactional
     public void updateStock(String skuCode, Integer quantity) {
         lockService.acquireLock(skuCode);
@@ -39,16 +38,6 @@ public class InventoryService {
         } finally {
             lockService.releaseLock(skuCode);
         }
-    }
-    
-    public List<InventoryResponse> checkInventory(List<String> skuCodes) {
-        return inventoryRepository.findBySkuCodeIn(skuCodes).stream()
-            .map(inventory -> InventoryResponse.builder()
-                .skuCode(inventory.getSkuCode())
-                .isInStock(inventory.getQuantity() > 0)
-                .quantity(inventory.getQuantity())
-                .build())
-            .toList();
     }
     
     private Inventory findInventoryOrThrow(String skuCode) {
@@ -69,4 +58,4 @@ public class InventoryService {
             );
         }
     }
-}
+} 

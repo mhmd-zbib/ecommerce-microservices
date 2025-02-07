@@ -18,19 +18,83 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 50
+            redis-rate-limiter.burstCapacity: 100
+            redis-rate-limiter.requestedTokens: 1
+        - name: Retry
+          args:
+            retries: 2
+            methods: GET,POST
+            series: SERVER_ERROR
+            exceptions: java.io.IOException,java.util.concurrent.TimeoutException
+            backoff:
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
       routes:
         - id: product-service
           uri: lb://product-service
           predicates:
             - Path=/product/**
+            - Method=GET,POST,PUT,DELETE
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: productCircuitBreaker
+                fallbackUri: forward:/product-fallback
+            - name: RequestSize
+              args:
+                maxSize: 5MB
+            - name: DedupeResponseHeader
+              args:
+                strategy: RETAIN_UNIQUE
+            - name: CacheRequestBody
+              args:
+                maxSize: 10000
+                ttl: 5m
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+            - AddResponseHeader=X-Response-Cache-Time, ${datetime}
+            - RemoveRequestHeader=Cookie
+            - PreserveHostHeader
         - id: inventory-service
           uri: lb://inventory-service
           predicates:
             - Path=/inventory/**
+            - Method=GET,POST,PUT
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: inventoryCircuitBreaker
+                fallbackUri: forward:/inventory-fallback
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+            - RemoveRequestHeader=Cookie
+            - PreserveHostHeader
         - id: order-service
           uri: lb://order-service
           predicates:
             - Path=/order/**
+            - Method=GET,POST,PUT,DELETE
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderCircuitBreaker
+                fallbackUri: forward:/order-fallback
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+            - RemoveRequestHeader=Cookie
+            - PreserveHostHeader
         - id: discover-server
           uri: http://localhost:8761
           predicates:
@@ -51,3 +115,41 @@ logging:
 
 server:
   port: 8000
+
+redis:
+  host: localhost
+  port: 6379
+  timeout: 2000ms
+  connect-timeout: 1500ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,gateway,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 3s
+  circuitbreaker:
+    metrics:
+      enabled: true
+    instances:
+      productCircuitBreaker:
+        sliding-window-size: 20
+        permitted-number-of-calls-in-half-open-state: 5
+        wait-duration-in-open-state: 15s
+        failure-rate-threshold: 40

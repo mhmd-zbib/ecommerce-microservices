@@ -2,7 +2,6 @@ package dev.zbib.productservice.controller;
 
 import dev.zbib.productservice.model.request.ProductRequest;
 import dev.zbib.productservice.model.response.ProductResponse;
-import dev.zbib.productservice.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
